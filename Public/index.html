@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Red Hole - Universal Downloader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #0f0b0b; color: #ffffff; overflow-x: hidden; transition: background-color 0.5s ease; -webkit-tap-highlight-color: transparent; user-select: none; }
+        .handwriting { font-family: 'Architects Daughter', cursive; letter-spacing: 1.5px; }
+        @keyframes spin-slow { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes spin-reverse { 0% { transform: rotate(360deg); } 100% { transform: rotate(0deg); } }
+        @keyframes pulse-glow { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 1; filter: drop-shadow(0 0 25px var(--glow-color)); } }
+        .animate-spin-slow { animation: spin-slow 15s linear infinite; }
+        .animate-spin-reverse { animation: spin-reverse 12s linear infinite; }
+        .animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+        #videos-list::-webkit-scrollbar { width: 4px; }
+        #videos-list::-webkit-scrollbar-track { background: #1f1f1f; border-radius: 10px; }
+        #videos-list::-webkit-scrollbar-thumb { background: #ef4444; border-radius: 10px; }
+        .scale-95 { transform: scale(0.95); }
+    </style>
+</head>
+<body id="app-body" class="min-h-screen flex flex-col justify-between items-center py-6 px-4 selection:bg-red-500 selection:text-black">
+    <header class="w-full max-w-md flex justify-between items-center px-2">
+        <div class="flex items-center gap-2">
+            <button id="info-btn" class="ui-element w-10 h-10 rounded-full border border-red-500/40 flex items-center justify-center text-red-400 hover:bg-red-950/30 transition-all cursor-pointer">
+                <i data-lucide="info" class="w-5 h-5"></i>
+            </button>
+            <button id="toggle-color-btn" class="ui-element w-10 h-10 rounded-full border border-red-500/40 flex items-center justify-center text-red-400 hover:bg-red-950/30 transition-all cursor-pointer" title="Switch Theme Color">
+                <i data-lucide="palette" class="w-5 h-5"></i>
+            </button>
+        </div>
+        <button id="like-btn" class="ui-element w-10 h-10 flex items-center justify-center text-red-400 hover:text-red-300 transition-all cursor-pointer">
+            <i data-lucide="heart" class="ui-fill w-6 h-6 fill-red-500 text-red-400"></i>
+        </button>
+    </header>
+    <main class="flex flex-col items-center justify-center my-auto w-full max-w-md text-center">
+        <h1 id="app-title" class="ui-element handwriting text-2xl md:text-3xl font-bold tracking-widest text-red-400 mb-6" style="filter: drop-shadow(0 0 10px rgba(248, 113, 113, 0.5));">
+            R E D &nbsp; H O L E
+        </h1>
+        <div class="w-full px-4 mb-6">
+            <div class="flex gap-2 bg-neutral-900 border border-red-500/30 rounded-xl p-2 shadow-lg">
+                <input type="text" id="link-input" placeholder="Paste any video link..." class="bg-transparent text-sm text-white px-3 py-2 w-full outline-none handwriting placeholder:text-neutral-500">
+                <button id="save-link-btn" class="ui-bg bg-red-600 text-black font-bold px-4 py-2 rounded-lg handwriting text-xs hover:opacity-90 transition-all cursor-pointer">DOWNLOAD</button>
+            </div>
+        </div>
+        <div class="relative w-56 h-56 md:w-64 md:h-64 flex items-center justify-center my-4 cursor-pointer" id="hole-container" title="Hold to download without sound">
+            <div id="ring-1" class="absolute inset-0 border-2 border-dashed border-red-500/30 rounded-full animate-spin-reverse pointer-events-none"></div>
+            <div id="ring-2" class="absolute inset-2 border-4 border-transparent border-t-red-400 border-l-red-500 rounded-full animate-spin-slow pointer-events-none"></div>
+            <div id="ring-3" class="absolute inset-6 border-2 border-dotted border-red-400/50 rounded-full animate-spin-reverse pointer-events-none" style="animation-duration: 8s;"></div>
+            <div id="core-ball" class="w-36 h-36 md:w-44 md:h-44 rounded-full bg-gradient-to-br from-red-300 via-red-600 to-red-950 shadow-2xl animate-pulse-glow flex items-center justify-center relative overflow-hidden" style="--glow-color: rgba(239, 68, 68, 0.7);">
+                <div class="absolute top-2 left-6 w-12 h-6 bg-white/20 rounded-full blur-sm transform -rotate-45"></div>
+                <div class="absolute inset-0 bg-radial from-red-400/30 via-transparent to-black/60 pointer-events-none"></div>
+                <span id="progress-text" class="absolute z-10 handwriting text-white text-lg font-bold tracking-wider hidden">0%</span>
+            </div>
+        </div>
+        <p class="handwriting text-xs md:text-sm text-red-300/80 tracking-wider mt-4 px-4 text-center">
+            Paste link to download &middot; Hold hole to strip sound
+        </p>
+    </main>
+    <footer class="w-full max-w-md flex flex-col items-center pb-4">
+        <button id="videos-btn" class="flex flex-col items-center gap-1 group focus:outline-none cursor-pointer">
+            <div class="grid grid-cols-3 gap-1 p-1">
+                <span class="dot-item w-1.5 h-1.5 rounded-full bg-red-400 group-hover:scale-125 transition-all"></span>
+                <span class="dot-item w-1.5 h-1.5 rounded-full bg-red-400 group-hover:scale-125 transition-all"></span>
+                <span class="dot-item w-1.5 h-1.5 rounded-full bg-red-400 group-hover:scale-125 transition-all"></span>
+                <span class="dot-item w-1.5 h-1.5 rounded-full bg-red-400 group-hover:scale-125 transition-all"></span>
+                <span class="dot-item w-1.5 h-1.5 rounded-full bg-red-400 group-hover:scale-125 transition-all"></span>
+                <span class="dot-item w-1.5 h-1.5 rounded-full bg-red-400 group-hover:scale-125 transition-all"></span>
+            </div>
+            <span class="ui-element handwriting text-xs tracking-widest text-red-400 mt-1">SAVED VIDEOS</span>
+        </button>
+    </footer>
+    <div id="videos-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex flex-col justify-between p-6 hidden">
+        <div class="space-y-4 mt-2">
+            <div class="flex justify-between items-center border-b border-neutral-700 pb-3">
+                <h2 class="handwriting text-xl text-white font-semibold">Downloaded Gallery</h2>
+                <button id="videos-close-btn" class="ui-element handwriting text-red-400 hover:text-red-300 text-sm font-bold px-3 py-1 cursor-pointer">CLOSE</button>
+            </div>
+            <div id="videos-list" class="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+                <p class="handwriting text-sm text-neutral-400 text-center py-10">No videos downloaded yet.</p>
+            </div>
+        </div>
+        <div class="text-center text-xs text-neutral-500 handwriting pb-2">
+            Total Downloaded: <span id="videos-count">0</span>
+        </div>
+    </div>
+    <div id="info-modal" class="fixed inset-0 bg-[#333333] z-50 flex flex-col justify-between p-6 hidden">
+        <div class="space-y-6 mt-4">
+            <h2 class="handwriting text-2xl text-white font-semibold">Red Hole Backend Guide</h2>
+            <p class="handwriting text-sm text-neutral-200 leading-relaxed">
+                &middot; To enable real downloading, run a Node.js server with Express and `ytdl-core` / `fluent-ffmpeg`.
+            </p>
+            <p class="handwriting text-sm text-neutral-200 leading-relaxed">
+                &middot; Endpoint `/api/download` fetches the video stream and `/api/mute` processes it without audio.
+            </p>
+        </div>
+        <div class="flex justify-end pb-4">
+            <button id="info-close-btn" class="ui-element handwriting text-red-400 hover:text-red-300 text-lg font-bold tracking-widest px-4 py-2 cursor-pointer">
+                OK
+            </button>
+        </div>
+    </div>
+    <div id="support-modal" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-[#333333] border border-neutral-700 rounded-xl max-w-sm w-full p-6 text-left shadow-2xl relative">
+            <h3 class="handwriting text-xl text-white font-semibold mb-3 flex items-center gap-2">
+                Support Red Hole ❤️
+            </h3>
+            <p class="handwriting text-sm text-neutral-300 leading-relaxed mb-5">
+                If Red Hole helps you, a small tip keeps it running — totally optional ❤️
+            </p>
+            <div class="space-y-2 mb-6 handwriting text-sm text-neutral-200">
+                <div class="flex items-center gap-2 text-yellow-400">
+                    <span>🟡</span>
+                    <span class="font-medium text-white">Donate via Jazzcash</span>
+                </div>
+                <div class="text-xs space-y-1.5 text-neutral-300 pl-1">
+                    <p>Jazzcash Account: <span class="text-white select-all">03096637588</span></p>
+                    <p>Email: <span class="text-white select-all">Imranmanibfg@gmail.com</span></p>
+                    <p>Nick: <span class="text-white">Muhammad-Imran</span></p>
+                </div>
+            </div>
+            <div class="flex flex-col items-end gap-3 font-semibold text-sm">
+                <button id="copy-binance-btn" class="ui-element handwriting text-red-400 hover:text-red-300 tracking-wider uppercase transition-colors cursor-pointer">
+                    COPY JAZZCASH
+                </button>
+                <button id="close-modal-btn" class="ui-element handwriting text-red-400 hover:text-red-300 tracking-wider uppercase transition-colors cursor-pointer">
+                    CLOSE
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="toast" class="ui-bg fixed bottom-16 bg-red-600 text-black px-4 py-2 rounded-lg text-xs font-semibold handwriting transition-all duration-300 opacity-0 pointer-events-none z-50">
+        Copied!
+    </div>
+    <script>
+        lucide.createIcons();
+        const holeContainer = document.getElementById('hole-container');
+        const infoBtn = document.getElementById('info-btn');
+        const infoModal = document.getElementById('info-modal');
+        const infoCloseBtn = document.getElementById('info-close-btn');
+        const likeBtn = document.getElementById('like-btn');
+        const videosBtn = document.getElementById('videos-btn');
+        const videosModal = document.getElementById('videos-modal');
+        const videosCloseBtn = document.getElementById('videos-close-btn');
+        const videosList = document.getElementById('videos-list');
+        const videosCount = document.getElementById('videos-count');
+        const supportModal = document.getElementById('support-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const copyBinanceBtn = document.getElementById('copy-binance-btn');
+        const toast = document.getElementById('toast');
+        const toggleColorBtn = document.getElementById('toggle-color-btn');
+        const appTitle = document.getElementById('app-title');
+        const coreBall = document.getElementById('core-ball');
+        const ring1 = document.getElementById('ring-1');
+        const ring2 = document.getElementById('ring-2');
+        const ring3 = document.getElementById('ring-3');
+        const linkInput = document.getElementById('link-input');
+        const saveLinkBtn = document.getElementById('save-link-btn');
+        const progressText = document.getElementById('progress-text');
+        let savedVideos = [];
+        let isDownloading = false;
+        const colorThemes = [
+            { hue: 0, name: "Ruby Red" },
+            { hue: 38, name: "Amber Orange" },
+            { hue: 142, name: "Emerald Green" },
+            { hue: 210, name: "Azure Blue" },
+            { hue: 270, name: "Violet Purple" },
+            { hue: 320, name: "Magenta Pink" },
+            { hue: 180, name: "Cyan Teal" },
+            { hue: 50, name: "Golden Yellow" },
+            { hue: 290, name: "Orchid Purple" },
+            { hue: 90, name: "Lime Glow" }
+        ];
+        let currentThemeIndex = 0;
+        const savedTheme = localStorage.getItem('redhole-theme');
+        if (savedTheme !== null) {
+            currentThemeIndex = parseInt(savedTheme) % colorThemes.length;
+        }
+        function applyTheme(index) {
+            const theme = colorThemes[index];
+            const h = theme.hue;
+            const primaryColor = `hsl(${h}, 95%, 65%)`;
+            const borderColor = `hsla(${h}, 90%, 60%, 0.4)`;
+            const subtleBorderColor = `hsla(${h}, 90%, 60%, 0.25)`;
+            coreBall.style.background = `linear-gradient(to bottom right, hsl(${h}, 85%, 85%), hsl(${h}, 90%, 50%), hsl(${h}, 95%, 15%))`;
+            coreBall.style.setProperty('--glow-color', `hsla(${h}, 95%, 60%, 0.75)` );
+            ring1.style.borderColor = subtleBorderColor;
+            ring2.style.borderTopColor = primaryColor;
+            ring2.style.borderLeftColor = `hsl(${h}, 90%, 55%)`;
+            ring3.style.borderColor = subtleBorderColor;
+            document.querySelectorAll('.ui-element').forEach(el => {
+                el.style.color = primaryColor;
+                if (el.tagName !== 'BUTTON' || !el.classList.contains('ui-bg')) {
+                    el.style.borderColor = borderColor;
+                }
+            });
+            document.querySelectorAll('.ui-fill').forEach(el => {
+                el.style.fill = `hsla(${h}, 90%, 60%, 0.35)`;
+                el.style.color = primaryColor;
+            });
+            document.querySelectorAll('.ui-bg').forEach(el => {
+                el.style.backgroundColor = primaryColor;
+            });
+            document.querySelectorAll('.dot-item').forEach(el => {
+                el.style.backgroundColor = primaryColor;
+            });
+            localStorage.setItem('redhole-theme', index.toString());
+        }
+        applyTheme(currentThemeIndex);
+        toggleColorBtn.addEventListener('click', () => {
+            currentThemeIndex = (currentThemeIndex + 1) % colorThemes.length;
+            applyTheme(currentThemeIndex);
+            showToast(`Theme: ${colorThemes[currentThemeIndex].name}`);
+        });
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            clearTimeout(toast._timeout);
+            toast._timeout = setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 2500);
+        }
+        infoBtn.addEventListener('click', () => infoModal.classList.remove('hidden'));
+        infoCloseBtn.addEventListener('click', () => infoModal.classList.add('hidden'));
+        likeBtn.addEventListener('click', () => supportModal.classList.remove('hidden'));
+        closeModalBtn.addEventListener('click', () => supportModal.classList.add('hidden'));
+        videosBtn.addEventListener('click', () => {
+            renderSavedVideos();
+            videosModal.classList.remove('hidden');
+        });
+        videosCloseBtn.addEventListener('click', () => videosModal.classList.add('hidden'));
+        copyBinanceBtn.addEventListener('click', () => {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText('03096637588').then(() => {
+                    showToast('Jazzcash number copied!');
+                }).catch(() => fallbackCopy());
+            } else {
+                fallbackCopy();
+            }
+        });
+        function fallbackCopy() {
+            const textarea = document.createElement('textarea');
+            textarea.value = '03096637588';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('Jazzcash number copied!');
+            } catch (e) {
+                showToast('Failed to copy');
+            }
+            document.body.removeChild(textarea);
+        }
+        function loadSavedVideos() {
+            const data = localStorage.getItem('redhole-videos');
+            if (data) {
+                try { savedVideos = JSON.parse(data); } catch(e) { savedVideos = []; }
+            } else {
+                savedVideos = [];
+            }
+        }
+        loadSavedVideos();
+        function saveVideosToStorage() {
+            localStorage.setItem('redhole-videos', JSON.stringify(savedVideos));
+        }
+        function renderSavedVideos() {
+            videosCount.textContent = savedVideos.length;
+            if (savedVideos.length === 0) {
+                videosList.innerHTML = `<p class="handwriting text-sm text-neutral-400 text-center py-10">No videos downloaded yet.</p>`;
+                return;
+            }
+            videosList.innerHTML = savedVideos.map((item, index) => `
+                <div class="bg-neutral-900 border border-neutral-800 p-3 rounded-lg flex items-center justify-between gap-3">
+                    <div class="truncate flex-1">
+                        <p class="handwriting text-xs text-neutral-300 font-bold">Video #${index + 1}</p>
+                        <a href="${item.url}" target="_blank" class="handwriting text-xs text-red-400 hover:underline truncate block">${item.url}</a>
+                        <span class="text-[10px] text-neutral-500">${item.date}</span>
+                    </div>
+                    <a href="${item.downloadUrl}" download class="bg-red-950 text-red-400 text-[10px] px-2 py-1 rounded handwriting hover:bg-red-900 whitespace-nowrap">Download</a>
+                </div>
+            `).join('');
+        }
+        async function triggerRealDownload(urlText, removeAudio = false) {
+            const val = urlText ? urlText.trim() : linkInput.value.trim();
+            if (!val || (!val.startsWith('http://') && !val.startsWith('https://'))) {
+                showToast("Please enter a valid video link!");
+                return;
+            }
+            if (isDownloading) return;
+            isDownloading = true;
+            saveLinkBtn.disabled = true;
+            linkInput.disabled = true;
+            progressText.classList.remove('hidden');
+            let currentProgress = 0;
+            progressText.textContent = '0%';
+            const progressInterval = setInterval(() => {
+                currentProgress += Math.floor(Math.random() * 8) + 3;
+                if (currentProgress >= 95) currentProgress = 95;
+                progressText.textContent = currentProgress + '%';
+            }, 250);
+            try {
+                const response = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: val, mute: removeAudio })
+                });
+                const data = await response.json();
+                clearInterval(progressInterval);
+                progressText.textContent = '100%';
+                if (response.ok && data.downloadUrl) {
+                    savedVideos.push({
+                        url: val,
+                        date: new Date().toLocaleString(),
+                        downloadUrl: data.downloadUrl
+                    });
+                    saveVideosToStorage();
+                    renderSavedVideos();
+                    const link = document.createElement('a');
+                    link.href = data.downloadUrl;
+                    link.download = '';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showToast(removeAudio ? "Audio stripped & downloaded!" : "Video downloaded!");
+                    linkInput.value = '';
+                } else {
+                    showToast('Error: ' + (data.error || 'Server error'));
+                }
+            } catch (err) {
+                clearInterval(progressInterval);
+                showToast('Network error! Check internet / server.');
+                console.error(err);
+            } finally {
+                clearInterval(progressInterval);
+                progressText.classList.add('hidden');
+                progressText.textContent = '0%';
+                isDownloading = false;
+                saveLinkBtn.disabled = false;
+                linkInput.disabled = false;
+                ring1.style.animationDuration = '';
+                ring2.style.animationDuration = '';
+                ring3.style.animationDuration = '';
+            }
+        }
+        saveLinkBtn.addEventListener('click', () => triggerRealDownload(null, false));
+        linkInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') saveLinkBtn.click();
+        });
+        let holdTimer = null;
+        let isHolding = false;
+        const startHold = (e) => {
+            e.preventDefault();
+            if (isDownloading) return;
+            isHolding = true;
+            holeContainer.classList.add('scale-95');
+            ring1.style.animationDuration = '2s';
+            ring2.style.animationDuration = '2s';
+            ring3.style.animationDuration = '2s';
+            holdTimer = setTimeout(() => {
+                if (isHolding) {
+                    const val = linkInput.value.trim();
+                    if (val) {
+                        triggerRealDownload(val, true);
+                    } else {
+                        showToast("Paste a link first, then hold to strip audio!");
+                    }
+                    endHold(e);
+                }
+            }, 1200);
+        };
+        const endHold = (e) => {
+            if (!isHolding) return;
+            isHolding = false;
+            holeContainer.classList.remove('scale-95');
+            if (holdTimer) {
+                clearTimeout(holdTimer);
+                holdTimer = null;
+            }
+            ring1.style.animationDuration = '';
+            ring2.style.animationDuration = '';
+            ring3.style.animationDuration = '';
+        };
+        holeContainer.addEventListener('mousedown', startHold);
+        holeContainer.addEventListener('mouseup', endHold);
+        holeContainer.addEventListener('mouseleave', () => { if (isHolding) endHold(); });
+        holeContainer.addEventListener('touchstart', startHold, { passive: false });
+        holeContainer.addEventListener('touchend', endHold, { passive: false });
+        holeContainer.addEventListener('touchcancel', endHold, { passive: false });
+        renderSavedVideos();
+    </script>
+</body>
+</html>
